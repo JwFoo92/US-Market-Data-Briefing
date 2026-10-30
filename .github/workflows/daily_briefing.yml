@@ -1,7 +1,7 @@
 on:
-  schedule:
-    # 00:00 UTC = 08:00 AM MYT (Morning Briefing)
-    - cron: '0 0 * * *'
-    # 11:00 UTC = 19:00 PM MYT (Evening Pre-Market Alert)
-    - cron: '0 11 * * *'
-  workflow_dispatch:  # Allows manual trigger anytime
+schedule:
+# 00:00 UTC = 08:00 AM MYT (Morning Briefing)
+- cron: '0 0 * * *'
+# 11:00 UTC = 19:00 PM MYT (Evening Pre-Market Alert)
+- cron: '0 11 * * *'
+workflow_dispatch: # Allows manual trigger anytime
