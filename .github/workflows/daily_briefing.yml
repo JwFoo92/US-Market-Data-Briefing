@@ -1,4 +1,4 @@
-name: Daily Briefing
+name: Daily US Market Briefing Update
 
 on:
   schedule:
@@ -6,19 +6,35 @@ on:
     - cron: '0 0 * * *'
     # 11:00 UTC = 19:00 PM MYT (Evening Pre-Market Alert)
     - cron: '0 11 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual trigger anytime
 
 jobs:
   update-briefing:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
-      - name: Run update script
-        run: python scripts/update_briefing.py
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance requests
+
+      - name: Fetch Market Snapshot and Update Briefing
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/update_briefing.py
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update market briefing data" && git push)
+
