@@ -8,7 +8,7 @@ import requests
 # ====================== 配置 ======================
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY 未设置")
+    print("Warning: GEMINI_API_KEY 未设置")
 
 # ====================== 1. 获取市场数据 ======================
 def fetch_market_snapshot():
@@ -40,9 +40,43 @@ def fetch_market_snapshot():
             print(f"Error {symbol}: {e}")
     return snapshot
 
-# ====================== 2. 调用 Gemini REST API 生成完整早报 ======================
+# ====================== 2. 自动寻找可用 Gemini 模型并生成研报 ======================
+def get_available_gemini_model():
+    """向 Google 查询当前 API Key 允许调用的有效模型列表"""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+        res = requests.get(url, timeout=10)
+        if res.status_code == 200:
+            models_data = res.json().get('models', [])
+            # 筛选出支持 generateContent 的 flash 模型
+            flash_models = [
+                m['name'].replace('models/', '') 
+                for m in models_data 
+                if 'generateContent' in m.get('supportedGenerationMethods', []) and 'flash' in m['name']
+            ]
+            if flash_models:
+                print("发现账号可用的 Gemini Flash 模型:", flash_models)
+                return flash_models[0]
+            
+            # 如果没有 flash 找任意可调用的模型
+            all_models = [m['name'].replace('models/', '') for m in models_data if 'generateContent' in m.get('supportedGenerationMethods', [])]
+            if all_models:
+                return all_models[0]
+    except Exception as e:
+        print(f"查询可用模型列表失败: {e}")
+    
+    # 兜底默认模型列表
+    return "gemini-2.5-flash"
+
 def generate_full_briefing(snapshot):
-    print("Calling Gemini REST API to generate full briefing...")
+    if not GEMINI_API_KEY:
+        print("无 GEMINI_API_KEY，跳过 AI 生成，仅更新市场行情指标。")
+        return None
+
+    target_model = get_available_gemini_model()
+    print(f"Calling Gemini REST API using model: {target_model}...")
     
     data_lines = [f"{k}: {v['price']} ({'+' if v['pct']>=0 else ''}{v['pct']}%)" for k, v in snapshot.items()]
     data_text = "\n".join(data_lines)
@@ -54,7 +88,7 @@ def generate_full_briefing(snapshot):
 【最新市场数据】
 {data_text}
 
-请严格输出以下 JSON 格式（绝对不要包含 markdown 代码块如 ```json ，直接返回纯 JSON 字符串）：
+请严格输出 JSON 格式（绝对不要包含 markdown 代码块如 ```json ，直接返回纯 JSON 字符串）：
 
 {{
   "headline": "一句话总结今日市场核心特征（25字以内）",
@@ -65,19 +99,6 @@ def generate_full_briefing(snapshot):
     {{"title": "驱动因素标题", "content": "详细解释"}},
     {{"title": "驱动因素标题", "content": "详细解释"}}
   ],
-  "sector_comments": {{
-    "XLF": "一句话专业解读",
-    "XLRE": "一句话专业解读",
-    "XLI": "一句话专业解读",
-    "XLU": "一句话专业解读",
-    "XLP": "一句话专业解读",
-    "XLV": "一句话专业解读",
-    "XLB": "一句话专业解读",
-    "XLE": "一句话专业解读",
-    "XLY": "一句话专业解读",
-    "XLC": "一句话专业解读",
-    "XLK": "一句话专业解读"
-  }},
   "stories": [
     {{
       "category": "FED",
@@ -87,7 +108,8 @@ def generate_full_briefing(snapshot):
       "what": "事件发生描述（40-60字）",
       "why": "为什么重要 / 核心逻辑（40-60字）",
       "impact": "潜在市场影响（30-50字）",
-      "source": "来源名称"
+      "source": "来源名称",
+      "source_url": "https://www.federalreserve.gov"
     }}
   ],
   "focus_points": [
@@ -112,11 +134,12 @@ def generate_full_briefing(snapshot):
     }
     headers = {"Content-Type": "application/json"}
 
-    # 依次尝试可用模型的 REST API Endpoint
-    models_to_try = [
-        "gemini-2.5-flash",
-        "gemini-1.5-flash"
-    ]
+    # 准备测试的模型顺序
+    models_to_try = [target_model, "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"]
+    
+    # 消除重复项
+    seen = set()
+    models_to_try = [x for x in models_to_try if x and not (x in seen or seen.add(x))]
 
     for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
@@ -126,18 +149,17 @@ def generate_full_briefing(snapshot):
             if res.status_code == 200:
                 res_data = res.json()
                 text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
-                # 过滤可能的 markdown 标记
                 text = re.sub(r"^```(?:json)?\s*", "", text)
                 text = re.sub(r"\s*```$", "", text)
                 briefing = json.loads(text)
                 print(f"成功通过 {model_name} 生成 AI 研报！")
                 return briefing
             else:
-                print(f"模型 {model_name} 返回错误状态码 {res.status_code}: {res.text}")
+                print(f"模型 {model_name} 返回状态码 {res.status_code}")
         except Exception as e:
             print(f"调用 {model_name} 发生异常: {e}")
 
-    print("所有 Gemini 接口调用均失败。")
+    print("所有 Gemini API 调用未成功，将保留原有的基础研报结构并更新行情。")
     return None
 
 # ====================== 3. 更新 index.html ======================
@@ -155,10 +177,11 @@ def update_html(snapshot, briefing):
     if not briefing:
         with open("index.html", "w", encoding="utf-8") as f:
             f.write(content)
+        print("基础市场行情数据已成功更新！")
         return
     
     # 情绪评分 & 标签
-    content = re.sub(r'id="sentiment-score-val">[^<]*<', f'id="sentiment-score-val">{briefing.get("sentiment_score", 50)}<', content)
+    content = re.sub(r'id="sentiment-score-val">[^<]*<', f'id="sentiment-score-val">{briefing.get("sentiment_score", 52)}<', content)
     content = re.sub(r'id="sentiment-status-label">[^<]*<', f'id="sentiment-status-label">{briefing.get("sentiment_label", "中性")}<', content)
     
     # 大盘副标题
@@ -181,7 +204,7 @@ def update_html(snapshot, briefing):
         )
     
     # ===== 新闻卡片 =====
-    if "stories" in briefing:
+    if "stories" in briefing and len(briefing["stories"]) > 0:
         news_html = ""
         for s in briefing["stories"]:
             cat = s.get("category", "FED")
@@ -207,32 +230,6 @@ def update_html(snapshot, briefing):
             content, count=1
         )
     
-    # ===== 盘前三大关注重点 =====
-    if "focus_points" in briefing and len(briefing["focus_points"]) >= 3:
-        focus_html = ""
-        for point in briefing["focus_points"][:3]:
-            focus_html += f'<p class="text-xs text-slate-300 leading-relaxed font-sans">• {point}</p>'
-        
-        content = re.sub(
-            r'(盘前三大关注重点[\s\S]*?<div class="space-y-2 text-xs text-slate-300">)[\s\S]*?(</div>)',
-            r'\1' + focus_html + r'\2',
-            content, count=1
-        )
-    
-    # ===== 市场最大潜在风险 =====
-    if "max_risk_title" in briefing and "max_risk_content" in briefing:
-        risk_html = f'''
-                    <div class="text-xs text-slate-300 leading-relaxed bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">
-                        <span class="font-bold text-rose-300 block mb-1">{briefing["max_risk_title"]}</span>
-                        <p>{briefing["max_risk_content"]}</p>
-                    </div>'''
-        
-        content = re.sub(
-            r'(市场最大潜在风险[\s\S]*?<div class="text-xs text-slate-300[\s\S]*?</div>)',
-            '市场最大潜在风险</span>\n                        </h3>\n' + risk_html,
-            content, count=1
-        )
-    
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(content)
     
@@ -241,11 +238,7 @@ def update_html(snapshot, briefing):
 # ====================== 主程序 ======================
 if __name__ == "__main__":
     snapshot = fetch_market_snapshot()
-    print("Snapshot fetched:", json.dumps(snapshot, indent=2, ensure_ascii=False))
+    print("Snapshot fetched successfully.")
     
     briefing = generate_full_briefing(snapshot)
-    
-    if briefing:
-        print("Briefing generated keys:", list(briefing.keys()))
-    
     update_html(snapshot, briefing)
