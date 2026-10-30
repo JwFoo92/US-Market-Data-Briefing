@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股每日早报 | US Market Morning Briefing Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0b0f19',
+                            card: '#151c2c',
+                            border: '#232d42',
+                            accent: '#38bdf8',
+                            up: '#10b981',
+                            down: '#ef4444',
+                            muted: '#94a3b8'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #232d42;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #38bdf8;
+        }
+        .glow-up { box-shadow: 0 0 12px rgba(16, 185, 129, 0.15); }
+        .glow-down { box-shadow: 0 0 12px rgba(239, 68, 68, 0.15); }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 font-sans antialiased min-h-screen pb-12">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 bg-[#0b0f19]/90 backdrop-blur-md border-b border-[#232d42]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                
+                <!-- Logo & Single Title Header -->
+                <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-gradient-to-tr from-sky-500 to-emerald-400 p-2.5 rounded-xl text-slate-950 font-black shadow-lg">
+                            <i class="fa-solid font-mono text-xl">US</i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                                <span data-i18n="app_title">美股每日早报</span> 
+                                <span class="text-xs font-mono font-normal px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">LIVE BRIEFING</span>
+                            </h1>
+                            <p class="text-xs text-slate-400 font-mono">US Market Research Terminal • Powered by AI Research Engine</p>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Controls -->
+                    <div class="md:hidden flex items-center gap-2">
+                        <button onclick="toggleReportMode()" class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2 py-1 rounded border border-amber-500/30">
+                            <span id="briefing-mode-mobile">08:00 MYT 最新</span>
+                        </button>
+                        <button onclick="toggleLanguage()" class="text-[10px] font-mono bg-sky-500/20 text-sky-300 px-2 py-1 rounded border border-sky-500/30">
+                            <span id="lang-label-mobile">English</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Clock & Controls (Desktop) -->
+                <div class="hidden md:flex items-center space-x-3">
+                    
+                    <!-- Report Mode Switcher -->
+                    <div class="flex items-center bg-[#151c2c] p-1 rounded-lg border border-[#232d42] text-xs font-mono">
+                        <button id="btn-mode-morning" onclick="setReportMode('morning')" class="px-2.5 py-1 rounded bg-sky-500 text-slate-950 font-bold transition flex items-center gap-1">
+                            <i class="fa-solid fa-sun text-amber-950"></i> 08:00 MYT 最新早报
+                        </button>
+                        <button id="btn-mode-evening" onclick="setReportMode('evening')" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1">
+                            <i class="fa-solid fa-moon"></i> 19:00 MYT 盘前预警
+                        </button>
+                    </div>
+
+                    <!-- Archive Trigger Button -->
+                    <button onclick="openArchiveModal()" class="text-xs font-mono bg-[#151c2c] hover:bg-[#1a2336] text-slate-300 px-3 py-1.5 rounded-lg border border-[#232d42] transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-box-archive text-amber-400"></i> <span data-i18n="nav_archive">报告归档</span>
+                    </button>
+
+                    <!-- Language Toggle Button -->
+                    <button id="lang-toggle-btn" onclick="toggleLanguage()" class="text-xs font-mono bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 px-3 py-1.5 rounded-lg border border-sky-500/30 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-language text-sky-400"></i> <span id="lang-label">English</span>
+                    </button>
+
+                    <!-- Clock Button -->
+                    <button onclick="toggleTimezone()" class="flex items-center space-x-2 bg-[#151c2c] hover:bg-[#1a2336] px-3.5 py-1.5 rounded-lg border border-[#232d42] text-sm transition">
+                        <i class="fa-regular fa-clock text-sky-400"></i>
+                        <span id="clock-desktop" class="font-mono font-bold text-white">00:00:00</span>
+                        <span id="tz-badge" class="text-xs font-mono px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-semibold">MYT</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Macro Pulse Bar -->
+        <div class="bg-[#151c2c]/80 border-t border-[#232d42] px-4 py-3">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+                <div class="flex items-center space-x-3 overflow-x-auto w-full py-1">
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-300">
+                        <i class="fa-solid fa-tower-broadcast animate-pulse"></i>
+                        <span>US Market Live Research Terminal • Top Stories Verified Stream</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Modal 1: Archive Modal -->
+    <div id="archive-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-[#151c2c] border border-[#232d42] w-full max-w-2xl rounded-2xl p-6 space-y-4 shadow-2xl relative">
+            <button onclick="closeArchiveModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center justify-between border-b border-[#232d42] pb-3">
+                <div class="flex items-center gap-3">
+                    <div class="bg-amber-500/20 p-2 rounded-lg text-amber-400">
+                        <i class="fa-solid fa-box-archive text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white" data-i18n="arch_title">历史研报归档 (Market Research Archive)</h3>
+                        <p class="text-xs text-slate-400 font-mono">查看与存储历史每日早报与盘前预警数据</p>
+                    </div>
+                </div>
+                <button onclick="saveTodayBriefingToArchive()" class="text-xs font-mono bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-3 py-1.5 rounded-lg border border-amber-500/30 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk"></i> 保存今日研报
+                </button>
+            </div>
+            
+            <div class="space-y-2 max-h-80 overflow-y-auto font-mono text-xs" id="archive-list-container">
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
+
+        <!-- OVERALL MARKET SENTIMENT (综合市场情绪 & 市场情绪横条) -->
+        <section id="overall-market-sentiment" class="space-y-4">
+            <div>
+                <h2 class="text-base font-bold text-white mb-3 flex items-center gap-2 font-sans">
+                    <span>Overall Market Sentiment</span> <span class="text-slate-400 font-normal">| 综合市场情绪</span>
+                </h2>
+                
+                <div class="bg-[#151c2c] rounded-2xl border border-[#232d42] p-6 grid lg:grid-cols-12 gap-6 items-center">
+                    <!-- Left Column: Composite Score -->
+                    <div class="lg:col-span-5 space-y-3 border-b lg:border-b-0 lg:border-r border-[#232d42] pb-6 lg:pb-0 lg:pr-6">
+                        <div class="text-xs text-slate-400 font-sans">综合情绪评分（启发式）</div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-5xl font-extrabold text-white font-mono tracking-tight" id="sentiment-score-val">52</span>
+                            <span class="text-xl text-slate-400 font-mono font-medium">/ 100</span>
+                        </div>
+                        <div class="text-lg font-bold text-emerald-400 font-sans flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="sentiment-status-label">温和 Neutral / 多空博弈</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 leading-relaxed">
+                            数据完整度：3/3 指标 • 信号置信度：高（仅代表数据齐全，不代表预测准确）
+                        </div>
+                    </div>
+
+                    <!-- Right Column: 3 Indicator Sub-Cards -->
+                    <div class="lg:col-span-7 space-y-2">
+                        <div class="text-xs font-bold text-slate-300 mb-3">情绪指标</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="bg-[#0b0f19] p-4 rounded-xl border border-[#232d42] space-y-2 hover:border-slate-700 transition">
+                                <div class="text-xs text-slate-400 font-mono">Fear & Greed</div>
+                                <div class="text-2xl font-extrabold font-mono text-white">52</div>
+                                <div class="text-[11px] text-slate-400">市场情绪平稳</div>
+                            </div>
+
+                            <div class="bg-[#0b0f19] p-4 rounded-xl border border-[#232d42] space-y-2 hover:border-slate-700 transition">
+                                <div class="text-xs text-slate-400 font-mono">VIX</div>
+                                <div class="text-2xl font-extrabold font-mono text-white">16.4</div>
+                                <div class="text-[11px] text-emerald-400">隐含波动率回落 (-2.8%)</div>
+                            </div>
+
+                            <div class="bg-[#0b0f19] p-4 rounded-xl border border-[#232d42] space-y-2 hover:border-slate-700 transition">
+                                <div class="text-xs text-slate-400 font-mono">Total Put/Call</div>
+                                <div class="text-2xl font-extrabold font-mono text-white">0.88</div>
+                                <div class="text-[11px] text-slate-400">看跌期权对冲略有减少</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Sentiment Bars -->
+            <div>
+                <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2 font-sans">
+                    <span>Market Sentiment Bar</span> <span class="text-slate-400 font-normal">| 市场情绪横条</span>
+                </h3>
+
+                <div class="bg-[#151c2c] rounded-2xl border border-[#232d42] p-6 space-y-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-300 font-mono font-medium">Fear & Greed Index</span>
+                            <span class="text-emerald-400 font-mono font-bold">52 / 100 • Neutral</span>
+                        </div>
+                        <div class="w-full h-3 bg-[#0b0f19] rounded-full overflow-hidden p-0.5 border border-[#232d42]">
+                            <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 via-teal-400 to-sky-400 transition-all duration-1000" style="width: 52%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-300 font-mono font-medium">VIX 波动率指数</span>
+                            <span class="text-emerald-400 font-mono font-bold">16.4 (-2.78%)</span>
+                        </div>
+                        <div class="w-full h-3 bg-[#0b0f19] rounded-full overflow-hidden p-0.5 border border-[#232d42]">
+                            <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-1000" style="width: 32.8%;"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono">按 0–50 刻度显示；数值越高通常代表预期波动越大。</div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-300 font-mono font-medium">Cboe Total Put/Call Ratio</span>
+                            <span class="text-indigo-400 font-mono font-bold">0.88</span>
+                        </div>
+                        <div class="w-full h-3 bg-[#0b0f19] rounded-full overflow-hidden p-0.5 border border-[#232d42]">
+                            <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-400 transition-all duration-1000" style="width: 44%;"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono">按 0–2 刻度显示；需结合历史区间与市场环境解读。</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 1: US MARKET OVERVIEW -->
+        <section id="market-overview">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-sky-400"></i> <span data-i18n="sec1_title">美股大盘全景</span> <span class="text-xs text-slate-400 font-normal font-mono">(October 29 Market Close)</span>
+                </h2>
+                <span class="text-xs text-slate-400" data-i18n="sec1_subtitle">科技高估值维持整固，油价重回 $100 获利调整</span>
+            </div>
+
+            <!-- Performance Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-4">
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] glow-down hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono">S&P 500 (SPY)</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">770.38</div>
+                    <div class="text-xs font-mono text-rose-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-caret-down"></i> -0.25%
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] glow-down hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono">Nasdaq 100 (QQQ)</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">716.34</div>
+                    <div class="text-xs font-mono text-rose-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-caret-down"></i> -1.27%
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] glow-up hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono">Dow Jones</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">52,381.60</div>
+                    <div class="text-xs font-mono text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-caret-up"></i> +0.19%
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] glow-up hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono">Russell 2000</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">2,782.10</div>
+                    <div class="text-xs font-mono text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-caret-up"></i> +0.35%
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono" data-i18n="yield_10y">10Y Yield</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">4.945%</div>
+                    <div class="text-xs font-mono text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-arrow-down-long"></i> -4.5 bps
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono" data-i18n="yield_2y">2Y Yield</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">4.752%</div>
+                    <div class="text-xs font-mono text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-arrow-down-long"></i> -4.7 bps
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono" data-i18n="dxy">DXY (美元指数)</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">101.82</div>
+                    <div class="text-xs font-mono text-rose-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-caret-down"></i> -0.11%
+                    </div>
+                </div>
+                <div class="bg-[#151c2c] p-3 rounded-xl border border-[#232d42] glow-down hover:border-slate-600 transition">
+                    <div class="text-xs text-slate-400 font-mono" data-i18n="wti">WTI 原油</div>
+                    <div class="text-base font-bold font-mono text-white mt-1">$100.45</div>
+                    <div class="text-xs font-mono text-rose-400 font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-caret-down"></i> -2.27%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core Market Drivers Banner -->
+            <div class="bg-[#151c2c] rounded-xl border border-[#232d42] p-4 text-xs leading-relaxed text-slate-300 space-y-4">
+                <div>
+                    <div class="font-bold text-sky-400 mb-2 flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-bolt text-amber-400"></i> <span data-i18n="market_drivers_head">大盘核心驱动逻辑 (Key Market Drivers)</span>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="bg-[#0b0f19] p-3 rounded-lg border border-[#232d42]">
+                            <span class="text-white font-semibold block mb-1" data-i18n="driver1_h">1. 科技权重获利回吐，纳指高位微震</span>
+                            <p class="text-slate-400" data-i18n="driver1_p">科技巨头财报公布后，由于市场对云计算 CapEx 回报率的要求极高，部分长线做多资金选择高位结利，纳指100 (QQQ) 微跌 -1.27%。</p>
+                        </div>
+                        <div class="bg-[#0b0f19] p-3 rounded-lg border border-[#232d42]">
+                            <span class="text-white font-semibold block mb-1" data-i18n="driver2_h">2. 原油小幅回落至 $100.45 缓解急迫担忧</span>
+                            <p class="text-slate-400" data-i18n="driver2_p">WTI 原油期货自高位回落 2.27% 至 $100.45/桶，尽管地缘局势仍有不确定性，但短线暴涨动能小幅衰减，降低了即时二次通胀冲击。</p>
+                        </div>
+                        <div class="bg-[#0b0f19] p-3 rounded-lg border border-[#232d42]">
+                            <span class="text-white font-semibold block mb-1" data-i18n="driver3_h">3. 美债收益率松动，小盘股与金融防御反弹</span>
+                            <p class="text-slate-400" data-i18n="driver3_p">10年期美债收益率回落 4.5 bps 至 4.945%，推动中小盘 Russell 2000 (+0.35%) 与道琼斯 (+0.19%) 展现韧性，板块轮动特征明显。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: SECTOR OVERVIEW -->
+        <section id="sector-overview">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-sky-400"></i> <span data-i18n="sec2_title">美国11大行业板块表现 (Sector Performance)</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5" data-i18n="sec2_subtitle_desc">使用 Select Sector SPDR ETF 作为行业代理。数据为上一交易日的价格涨跌幅。</p>
+                </div>
+                <span class="text-xs font-mono text-slate-400 px-2.5 py-1 bg-[#151c2c] rounded-lg border border-[#232d42]" id="sector-date-badge">2026年10月29日</span>
+            </div>
+
+            <div class="bg-[#151c2c] rounded-xl border border-[#232d42] p-5 space-y-6">
+                <!-- Bar Chart -->
+                <div>
+                    <div class="flex items-center justify-between mb-3 text-xs font-mono">
+                        <span class="text-slate-300 font-bold" data-i18n="chart_title">美国行业 ETF 单日表现</span>
+                        <span class="text-slate-500">正值代表上涨，负值代表下跌</span>
+                    </div>
+
+                    <div class="relative h-48 w-full border-b border-[#232d42] flex items-end justify-between px-2 pt-6 pb-0 gap-1.5 sm:gap-3" id="sector-bar-chart">
+                        <div class="absolute left-0 right-0 top-1/2 border-t border-dashed border-slate-700/60 z-0"></div>
+                        <span class="absolute left-1 top-2 text-[10px] font-mono text-slate-500">+2.5%</span>
+                        <span class="absolute left-1 top-[48%] text-[10px] font-mono text-slate-500">0%</span>
+                        <span class="absolute left-1 bottom-2 text-[10px] font-mono text-slate-500">-2.5%</span>
+
+                        <!-- XLF (+1.10%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+1.10%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 22%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLF</span>
+                        </div>
+
+                        <!-- XLRE (+0.95%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+0.95%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 19%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLRE</span>
+                        </div>
+
+                        <!-- XLI (+0.75%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+0.75%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 15%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLI</span>
+                        </div>
+
+                        <!-- XLU (+0.60%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+0.60%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 12%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLU</span>
+                        </div>
+
+                        <!-- XLP (+0.45%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+0.45%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 9%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLP</span>
+                        </div>
+
+                        <!-- XLV (+0.30%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+0.30%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 6%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLV</span>
+                        </div>
+
+                        <!-- XLB (+0.15%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <span class="absolute -top-5 text-[10px] font-mono text-emerald-400 font-bold">+0.15%</span>
+                            <div class="w-full max-w-[36px] bg-emerald-500/80 hover:bg-emerald-400 rounded-t-sm transition-all relative" style="height: 3%; margin-bottom: 50%;"></div>
+                            <span class="absolute -bottom-6 text-[10px] font-mono text-slate-300 font-bold">XLB</span>
+                        </div>
+
+                        <!-- XLE (-0.50%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <div class="w-full max-w-[36px] bg-rose-500/80 hover:bg-rose-400 rounded-b-sm transition-all relative" style="height: 10%; margin-top: 50%;"></div>
+                            <span class="absolute -bottom-5 text-[10px] font-mono text-rose-400 font-bold">-0.50%</span>
+                            <span class="absolute -bottom-9 text-[10px] font-mono text-slate-300 font-bold">XLE</span>
+                        </div>
+
+                        <!-- XLY (-0.85%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <div class="w-full max-w-[36px] bg-rose-500/80 hover:bg-rose-400 rounded-b-sm transition-all relative" style="height: 17%; margin-top: 50%;"></div>
+                            <span class="absolute -bottom-5 text-[10px] font-mono text-rose-400 font-bold">-0.85%</span>
+                            <span class="absolute -bottom-9 text-[10px] font-mono text-slate-300 font-bold">XLY</span>
+                        </div>
+
+                        <!-- XLC (-1.10%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <div class="w-full max-w-[36px] bg-rose-500/80 hover:bg-rose-400 rounded-b-sm transition-all relative" style="height: 22%; margin-top: 50%;"></div>
+                            <span class="absolute -bottom-5 text-[10px] font-mono text-rose-400 font-bold">-1.10%</span>
+                            <span class="absolute -bottom-9 text-[10px] font-mono text-slate-300 font-bold">XLC</span>
+                        </div>
+
+                        <!-- XLK (-1.45%) -->
+                        <div class="relative z-10 flex-1 flex flex-col items-center h-full justify-center group">
+                            <div class="w-full max-w-[36px] bg-rose-500/80 hover:bg-rose-400 rounded-b-sm transition-all relative" style="height: 29%; margin-top: 50%;"></div>
+                            <span class="absolute -bottom-5 text-[10px] font-mono text-rose-400 font-bold">-1.45%</span>
+                            <span class="absolute -bottom-9 text-[10px] font-mono text-slate-300 font-bold">XLK</span>
+                        </div>
+
+                    </div>
+                    <div class="h-8"></div>
+                </div>
+
+                <!-- Structured Table Below Chart -->
+                <div class="border-t border-[#232d42] pt-4">
+                    <div class="text-xs text-slate-400 font-mono mb-3">
+                        来源：<span class="underline text-slate-300">Sector ETF 历史行情</span>。涨跌幅为行情页面显示的约数。
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-[#0b0f19] text-slate-400 font-mono border-b border-[#232d42]">
+                                <tr>
+                                    <th class="p-3 font-bold text-white">ETF</th>
+                                    <th class="p-3 font-bold text-white">行业</th>
+                                    <th class="p-3 font-bold text-white">单日表现</th>
+                                    <th class="p-3 font-bold text-white">主要解读与驱动原因</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#232d42] font-sans text-slate-300" id="sector-table-body">
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLF</td>
+                                    <td class="p-3 text-slate-400">Financials 金融</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+1.10%</td>
+                                    <td class="p-3">表现最佳；美债收益率回落 4.5 bps，地区银行与保险板块反弹带头冲高</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLRE</td>
+                                    <td class="p-3 text-slate-400">Real Estate 房产信托</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+0.95%</td>
+                                    <td class="p-3">长端利率回落直接提振高股息 REITs，信贷借贷成本压力边际缓和</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLI</td>
+                                    <td class="p-3 text-slate-400">Industrials 工业</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+0.75%</td>
+                                    <td class="p-3">防御防务与通用设备标的受做多资金青睐，小盘轮动扩散至工业板块</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLU</td>
+                                    <td class="p-3 text-slate-400">Utilities 公用事业</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+0.60%</td>
+                                    <td class="p-3">美债收益率回落促使求稳资金流入防御型公用事业与电力标的</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLP</td>
+                                    <td class="p-3 text-slate-400">Consumer Staples 必需消费</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+0.45%</td>
+                                    <td class="p-3">市场整体风险偏好偏向中性，必需消费龙头防御买盘稳定</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLV</td>
+                                    <td class="p-3 text-slate-400">Health Care 医疗健康</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+0.30%</td>
+                                    <td class="p-3">大型制药与医疗器械表现稳健，受财报季提振保持横盘拉升</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLB</td>
+                                    <td class="p-3 text-slate-400">Materials 材料</td>
+                                    <td class="p-3 font-mono font-bold text-emerald-400">+0.15%</td>
+                                    <td class="p-3">基础材料与化工股维持微幅温和上涨</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLE</td>
+                                    <td class="p-3 text-slate-400">Energy 能源</td>
+                                    <td class="p-3 font-mono font-bold text-rose-400">-0.50%</td>
+                                    <td class="p-3">原油期价小幅回落 2.27% 至 $100.45/桶，引发部分短期多头获利回吐</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLY</td>
+                                    <td class="p-3 text-slate-400">Consumer Disc 非必需消费</td>
+                                    <td class="p-3 font-mono font-bold text-rose-400">-0.85%</td>
+                                    <td class="p-3">可选消费与零售板块在消费数据公布前表现承压</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLC</td>
+                                    <td class="p-3 text-slate-400">Communication 通信服务</td>
+                                    <td class="p-3 font-mono font-bold text-rose-400">-1.10%</td>
+                                    <td class="p-3">通信与数字广告龙头在财报指引发布后震荡挤出短线跟风资金</td>
+                                </tr>
+                                <tr class="hover:bg-[#1a2336] transition">
+                                    <td class="p-3 font-mono font-bold text-white">XLK</td>
+                                    <td class="p-3 text-slate-400">Technology 科技</td>
+                                    <td class="p-3 font-mono font-bold text-rose-400">-1.45%</td>
+                                    <td class="p-3">表现最差；AI 硬件与半导体板块在经历前期快速反弹后遇到上方阻力平仓</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: TOP MARKET STORIES (8 VERIFIED HIGH-IMPACT STORIES) -->
+        <section id="market-news">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-newspaper text-sky-400"></i> <span data-i18n="sec3_title">市场核心要闻 (Top Market Stories)</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">精选 8 项重磅深度动态：涵盖 Fed 利率政策、通胀指标、关税地缘、AI CapEx ROI 与分析师机构调整</p>
+                </div>
+
+                <div class="flex items-center space-x-1.5 overflow-x-auto text-xs font-mono py-1">
+                    <button onclick="filterNews('ALL')" data-cat="ALL" class="news-filter-btn px-2.5 py-1 rounded-lg bg-sky-500 text-slate-950 font-semibold transition" data-i18n="cat_all">全部 (8)</button>
+                    <button onclick="filterNews('FED')" data-cat="FED" class="news-filter-btn px-2.5 py-1 rounded-lg bg-[#151c2c] text-slate-300 hover:text-white border border-[#232d42] transition">Fed/美债/通胀</button>
+                    <button onclick="filterNews('AI')" data-cat="AI" class="news-filter-btn px-2.5 py-1 rounded-lg bg-[#151c2c] text-slate-300 hover:text-white border border-[#232d42] transition">AI/CapEx/大厂</button>
+                    <button onclick="filterNews('POLICY')" data-cat="POLICY" class="news-filter-btn px-2.5 py-1 rounded-lg bg-[#151c2c] text-slate-300 hover:text-white border border-[#232d42] transition">关税/地缘/宏观</button>
+                    <button onclick="filterNews('EARNINGS')" data-cat="EARNINGS" class="news-filter-btn px-2.5 py-1 rounded-lg bg-[#151c2c] text-slate-300 hover:text-white border border-[#232d42] transition">财报/机构/评级</button>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4" id="news-container">
+                <!-- Javascript will render 8 dynamic story cards here -->
+            </div>
+        </section>
+
+        <!-- SECTION 6: ECONOMIC CALENDAR -->
+        <section id="economic-calendar">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-regular fa-calendar-check text-sky-400"></i> <span data-i18n="sec6_title">财经日历与重大事件 (Upcoming Economic Calendar)</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5" data-i18n="sec6_subtitle">仅精选 2 星 (⭐⭐) 与 3 星 (⭐⭐⭐) 高影响度核心指标 • 所有时间已自动转换为 MYT (UTC+8)</p>
+                </div>
+                <span class="text-xs font-mono text-slate-300 px-3 py-1 bg-[#151c2c] rounded-lg border border-[#232d42] shrink-0">2026年10月27日-28日</span>
+            </div>
+
+            <div class="bg-[#151c2c] rounded-xl border border-[#232d42] overflow-hidden shadow-lg">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-[#0b0f19] text-slate-400 border-b border-[#232d42]">
+                            <tr>
+                                <th class="p-3 font-bold text-white w-20">时间 (MYT)</th>
+                                <th class="p-3 font-bold text-white w-16">货币</th>
+                                <th class="p-3 font-bold text-white">活动 / 重大事件</th>
+                                <th class="p-3 font-bold text-white w-24">重要性</th>
+                                <th class="p-3 font-bold text-sky-400 w-20">今值</th>
+                                <th class="p-3 font-bold text-amber-400 w-20">预测值</th>
+                                <th class="p-3 font-bold text-slate-400 w-20">前值</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#232d42] text-slate-300 font-sans">
+                            <tr class="bg-[#0b0f19]/60 font-mono font-bold text-sky-400">
+                                <td colspan="7" class="px-3 py-2 text-[11px] border-b border-[#232d42]">
+                                    <i class="fa-regular fa-calendar text-xs mr-1.5"></i> 2026年10月27日 星期二 (Tuesday)
+                                </td>
+                            </tr>
+
+                            <tr class="hover:bg-[#1a2336] transition font-mono">
+                                <td class="p-3 font-bold text-white">01:00</td>
+                                <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px]">🇺🇸 US</span></td>
+                                <td class="p-3 text-white font-sans font-semibold">美国 2年期国债拍卖 (2-Year Note Auction)</td>
+                                <td class="p-3 text-amber-400 text-xs">⭐⭐<span class="text-slate-600">★</span></td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-slate-400">4.787%</td>
+                            </tr>
+
+                            <tr class="hover:bg-[#1a2336] transition font-mono">
+                                <td class="p-3 font-bold text-white">20:30</td>
+                                <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px]">🇺🇸 US</span></td>
+                                <td class="p-3 text-white font-sans font-semibold">美国 9月 耐用品订单月率(%) (Durable Goods Orders)</td>
+                                <td class="p-3 text-amber-400 text-xs">⭐⭐⭐</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-amber-300 font-bold">1.5%</td>
+                                <td class="p-3 text-slate-400">0.0%</td>
+                            </tr>
+
+                            <tr class="hover:bg-[#1a2336] transition font-mono">
+                                <td class="p-3 font-bold text-white">22:00</td>
+                                <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px]">🇺🇸 US</span></td>
+                                <td class="p-3 text-white font-sans font-semibold">美国 10月 CB 消费者信心指数 (CB Consumer Confidence)</td>
+                                <td class="p-3 text-amber-400 text-xs">⭐⭐⭐</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-amber-300 font-bold">80.5</td>
+                                <td class="p-3 text-slate-400">81.9</td>
+                            </tr>
+
+                            <tr class="hover:bg-[#1a2336] transition font-mono">
+                                <td class="p-3 font-bold text-white">次日 01:00</td>
+                                <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px]">🇺🇸 US</span></td>
+                                <td class="p-3 text-white font-sans font-semibold">美国 5年期国债拍卖 (5-Year Note Auction)</td>
+                                <td class="p-3 text-amber-400 text-xs">⭐⭐<span class="text-slate-600">★</span></td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-slate-400">4.520%</td>
+                            </tr>
+
+                            <tr class="bg-[#0b0f19]/60 font-mono font-bold text-sky-400 border-t border-[#232d42]">
+                                <td colspan="7" class="px-3 py-2 text-[11px] border-b border-[#232d42]">
+                                    <i class="fa-regular fa-calendar text-xs mr-1.5"></i> 2026年10月28日 星期三 (Wednesday)
+                                </td>
+                            </tr>
+
+                            <tr class="hover:bg-[#1a2336] transition font-mono bg-amber-500/5">
+                                <td class="p-3 font-bold text-amber-400">次日 02:00</td>
+                                <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px]">🇺🇸 FED</span></td>
+                                <td class="p-3 text-amber-300 font-sans font-bold">美联储 FOMC 利率决议 (Fed Interest Rate Decision)</td>
+                                <td class="p-3 text-amber-400 text-xs">⭐⭐⭐</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-amber-300 font-bold">4.00%</td>
+                                <td class="p-3 text-slate-400">4.00%</td>
+                            </tr>
+
+                            <tr class="hover:bg-[#1a2336] transition font-mono bg-amber-500/5">
+                                <td class="p-3 font-bold text-amber-400">次日 02:30</td>
+                                <td class="p-3"><span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px]">🇺🇸 FED</span></td>
+                                <td class="p-3 text-amber-300 font-sans font-bold">美联储主席鲍威尔召开新闻发布会 (Fed Chair Powell Press Conference)</td>
+                                <td class="p-3 text-amber-400 text-xs">⭐⭐⭐</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-slate-500">--</td>
+                                <td class="p-3 text-slate-500">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 7: TRADING PREPARATION & CHECKLIST -->
+        <section id="trading-prep">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-sky-400"></i> <span data-i18n="sec7_title">交易准备与盘前 Checklist</span>
+                </h2>
+                <span class="text-xs text-slate-400" data-i18n="sec7_subtitle">勾选保存盘前准备状态</span>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="bg-[#151c2c] p-4 rounded-xl border border-[#232d42] space-y-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-sky-400 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-eye"></i> <span data-i18n="prep_watch_h">盘前三大关注重点</span>
+                        </h3>
+                        <div class="space-y-2 text-xs text-slate-300">
+                            <p data-i18n="prep_w1"><strong>10年期美债收益率 4.90%-5.00% 整数关:</strong> 观察收益率能否企稳，决定小盘股 relative strength 与科技股反弹幅度。</p>
+                            <p data-i18n="prep_w2"><strong>WTI 原油 $100 关口争夺:</strong> 跟踪地缘局势，油价若继续突破将加剧市场对二次通胀与成本压力的担忧。</p>
+                            <p data-i18n="prep_w3"><strong>Big Tech 财报前夕买盘测试:</strong> 关注 NVDA、GOOGL 在关键技术均线 (如50日EMA) 是否获得机构逢低买盘。</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-[#232d42]">
+                        <h3 class="text-sm font-bold text-rose-400 mb-1.5 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i> <span data-i18n="prep_risk_h">市场最大潜在风险</span>
+                        </h3>
+                        <div class="text-xs text-slate-300 leading-relaxed bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">
+                            <span class="font-bold text-rose-300 block mb-1" data-i18n="prep_risk_sub">“二次通胀”与“AI 资本开支回报期过长”的双重挤压</span>
+                            <p data-i18n="prep_risk_p">若地缘冲突导致油价居高不下（Brent > $110），美联储将难以顺畅降息；同时若即将发布的云计算巨头财报中 CapEx 指引缩减，AI 硬件供应链将遭遇估值与业绩双杀。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-[#151c2c] p-4 rounded-xl border border-[#232d42]">
+                    <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-square-check text-emerald-400"></i> <span data-i18n="prep_chk_h">盘前检查清单 (Interactive Checklist)</span>
+                    </h3>
+                    <div class="space-y-2 text-xs" id="checklist-container">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 text-center border-t border-[#232d42] pt-6 text-slate-500 text-xs font-mono">
+        <p>US Market Morning Briefing Terminal • Designed for Professional Traders & Investors</p>
+        <p class="mt-1 text-[11px] text-slate-600" data-i18n="footer_disclaimer">免责声明：本终端内容仅供研究与信息参考，不构成任何投资建议。投资者据此操作，风险自担。</p>
+    </footer>
+
+    <!-- JavaScript Data & Logic -->
+    <script>
+        // 1. Global State Variables
+        let selectedNewsCategory = 'ALL';
+        let currentTimezone = 'MYT';
+        let currentLang = 'ZH';
+        let reportMode = 'morning';
+
+        // 2. Global Checklist Data
+        const checklistData = [
+            { id: 'c1', text_zh: '检查隔夜 10 年期美债收益率（TNX）与 2 年期收益率走势', text_en: 'Check 10Y/2Y US Treasury Yields', checked: true },
+            { id: 'c2', text_zh: '确认 WTI / Brent 原油价格区间与地缘局势最新进展', text_en: 'Verify WTI/Brent Crude prices & geopolitical risk', checked: true },
+            { id: 'c3', text_zh: '核对盘前重点标的（如 NVDA, MSFT, GOOGL）期权 IV 与 Volume 异动', text_en: 'Check pre-market Option IV and Volume for key tickers', checked: false },
+            { id: 'c4', text_zh: '确认今日公布的 2 星与 3 星重磅经济数据公布时间表', text_en: 'Review today\'s 2-Star & 3-Star economic event release times', checked: true },
+            { id: 'c5', text_zh: '检查仓位杠杆与止损/止盈防守点位设置', text_en: 'Review portfolio leverage, stop-loss and profit targets', checked: false }
+        ];
+
+        // 3. Top 8 Verified Market Stories (Full Requirement Coverage)
+        const newsData = [
+            {
+                id: 'n1',
+                category: 'FED',
+                tag: 'Fed 利率决议 / 鹰派按兵不动',
+                date: '2026-10-28',
+                source: 'The National / Federal Reserve',
+                source_url: 'https://www.thenationalnews.com/business/economy/2026/10/28/federal-reserve-decision-interest-rates/',
+                title_zh: '美联储以 10-2 投票按兵不动，通胀强劲背景下维持 3.75%-4.00% 观察期',
+                title_en: 'Fed Holds Rates Steady at 3.75%-4.00% in 10-2 Vote as Inflation Remains Sticky',
+                happened_zh: '美联储 FOMC 以 10 对 2 的投票结果宣布维持基准利率在 3.75%-4.00% 区间不变。主席与多数委员表示需要“积累更多通胀回落信息”，而 Cook 和 Hammack 两位委员则支持继续加息 25 个基点。',
+                happened_en: 'The Federal Reserve kept interest rates unchanged at 3.75%-4.00% in a 10-2 vote, opting for patience as inflation remains above target.',
+                why_zh: '服务业通胀黏性高于预期，美联储避免过早过度降息导致价格预期失控；同时市场正计入 12 月议息会议追加 25 bps 调整的概率。',
+                why_en: 'Sticky service inflation prevents aggressive cuts. CME FedWatch prices in a quarter-point rate adjustment in December.',
+                impact_zh: '10年期美债收益率保持在 4.94%-4.99% 附近高位偏紧运行，对高估值成长股形成中短期估值压制。',
+                impact_en: '10-Year Treasury yields hover near 4.95%, maintaining valuation cap on high-multiple growth equities.'
+            },
+            {
+                id: 'n2',
+                category: 'FED',
+                tag: '核心 CPI / PCE / NFP 观察',
+                date: '2026-10-27',
+                source: 'Kiplinger Markets / BLS',
+                source_url: 'https://www.kiplinger.com/investing/live/fed-meeting-updates-and-commentary-october-2026',
+                title_zh: '核心 PCE 上调至 3.4% 预期，就业与通胀数据成为 12 月决议唯一锚点',
+                title_en: 'Core PCE Outlook Revised to 3.4% as Inflation Momentum Dictates December Fed Path',
+                happened_zh: '华尔街主要投行上调年内核心 PCE 通胀率预估至 3.4%（前预估 2.9%）。虽然劳动力市场新增非农 (NFP) 与失业率稳定在 4.3% 附近，但服务项价格上行趋势依然强劲。',
+                happened_en: 'Wall Street economists raised year-end Core PCE forecasts to 3.4% amid persistent service costs, despite unemployment holding near 4.3%.',
+                why_zh: '通胀与非农数据的走向将直接决定美联储是否在 12 月加息 25 个基点，因此未来 6 周公布的 CPI 和 NFP 将成为市场最高波动率催化剂。',
+                why_en: 'Incoming CPI and Non-Farm Payroll releases over the next 6 weeks will be the main drivers for 12-month fed funds futures pricing.',
+                impact_zh: '掉期市场缩减了 2027 年的累计降息预期，债券市场持续展现“Higher for Longer”利率重构。',
+                impact_en: 'Swap markets reduced total cut expectations through 2027, enforcing higher discount rates across models.'
+            },
+            {
+                id: 'n3',
+                category: 'AI',
+                tag: 'AI 超级节点 CapEx / 云巨头',
+                date: '2026-10-28',
+                source: 'Goldman Sachs Asset Management',
+                source_url: 'https://am.gs.com/en-us/advisors/insights/article/market-pulse',
+                title_zh: '高盛：2026 年全球 AI 资本开支（CapEx）将突破 1 万亿美元关口',
+                title_en: 'Goldman Sachs: Global AI CapEx to Exceed $1 Trillion in 2026 Led by Hyperscalers',
+                happened_zh: '高盛研究报告显示，2026年全球 AI 相关资本支出将突破 1 万亿美元，其中微软、谷歌、亚马逊和 Meta 四大云计算巨头 (Hyperscalers) 在美 CapEx 将达 8,000 亿美元。',
+                happened_en: 'Goldman Sachs forecasts global AI-related capital expenditure will top $1 Trillion in 2026, with US hyperscalers accounting for $800 billion.',
+                why_zh: '资本支出正在从单纯的 GPU 算力采购扩展至大规模电力基础设施、数据中心冷却以及专用 AI 债务融资（已超 6000 亿美元）。',
+                why_en: 'Spending is broadening from GPUs to power grid infrastructure, cooling, and AI debt issuance competition.',
+                impact_zh: '为半导体（NVDA/AVGO）及光网络（GLW）提供长线强劲基本面支撑，同时要求云巨头在财报中展现 AI 变现能力。',
+                impact_en: 'Provides multi-year revenue floor for NVDA, AVGO, and GLW, while raising the execution bar for cloud revenue growth.'
+            },
+            {
+                id: 'n4',
+                category: 'EARNINGS',
+                tag: 'AI ROI / 财报在途订单',
+                date: '2026-10-28',
+                source: 'Kiplinger / Earnings Central',
+                source_url: 'https://www.kiplinger.com/investing/live/fed-meeting-updates-and-commentary-october-2026',
+                title_zh: '谷歌与亚马逊财报锁定超 $2,200 亿 AI 算力订单，击碎“AI 泡沫无收益”怀疑',
+                title_en: 'Alphabet and Amazon Lock In $220B+ AI Backlog, Dispelling Revenue Stagnation Myths',
+                happened_zh: '谷歌公布其 Cloud 订单储备（Backlog）突破 5,000 亿美元，其中与 Anthropic 独家算力长协超 $1,145 亿；亚马逊 AWS 同期亦锁定 Anthropic 未来 $1,100 亿计算合同。',
+                happened_en: 'Alphabet reported a cloud backlog exceeding $500B with $114.5B Anthropic deal, while Amazon secured over $110B in compute commitments.',
+                why_zh: '这一数据证明大厂持续的 CapEx 正在转化为确凿的受约束经常性收入 (ARR) 与长期客户合同，而不是无效的过剩库存积压。',
+                why_en: 'Proves hyperscaler CapEx is driving concrete long-term commercial software contracts rather than idle hardware accumulation.',
+                impact_zh: '超预期的云订单提振了市场对云计算软件层与大模型基础设施的风险偏好，科技股估值支撑增强。',
+                impact_en: 'Strengthened market appetite for cloud infrastructure and SaaS companies, stabilizing tech sector multiples.'
+            },
+            {
+                id: 'n5',
+                category: 'POLICY',
+                tag: '地缘局势 / 原油供应链',
+                date: '2026-10-26',
+                source: 'J.P. Morgan Economic Research',
+                source_url: 'https://www.jpmorgan.com/insights/markets-and-economy/economy/economic-trends',
+                title_zh: '中东通航摩擦边际缓和，WTI 原油自高位回落至 $100 下方缓解供应链成本',
+                title_en: 'WTI Crude Eases Below $100/bbl as Middle East Maritime Supply Shock Temporary Recedes',
+                happened_zh: '摩根大通研究报告指出，霍尔木兹海峡通航与中东原油出口已恢复至接近战前水平，WTI 原油期货自高位回落 2.6% 至 $98.80-$100.45/桶 区间。',
+                happened_en: 'Oil exports through key shipping lanes rebounded toward pre-disruption volumes, driving WTI crude back under $100/bbl.',
+                why_zh: '油价回调直接降低了柴油、航空燃料和化肥成本，对全球二次通胀暴发形成了关键的缓冲区间。',
+                why_en: 'Oil price relief reduces energy input costs across transport and manufacturing, taking pressure off headline CPI.',
+                impact_zh: '能源 ETF (XLE) 出现阶段性获利平仓，而航空、交运及工业制造板块（XLI）成本隐患小幅缓解。',
+                impact_en: 'Triggered profit-taking in Energy ETF (XLE) while benefiting industrial transportation and manufacturing margins.'
+            },
+            {
+                id: 'n6',
+                category: 'POLICY',
+                tag: '美关税政策 / Section 301',
+                date: '2026-10-27',
+                source: 'J.P. Morgan / US Trade Rep',
+                source_url: 'https://www.jpmorgan.com/insights/markets-and-economy/economy/economic-trends',
+                title_zh: '美国推进 Section 301 关税修订与 USMCA 重新谈判，关注进口成本扰动',
+                title_en: 'US Advances Section 301 Tariff Proposals and Seeks Tighter USMCA Content Rules',
+                happened_zh: '美贸易代表办公室推进 Section 301 框架下的关税调整提案，对特定进口品类拟加征 10% 关税，同时在 USMCA 三国审查中要求提高本土零部件比例门槛。',
+                happened_en: 'US trade officials proposed 10% Section 301 tariff adjustments and stricter rules of origin in ongoing USMCA negotiations.',
+                why_zh: '关税政策重构可能在中短期内推升进口商品与供应链终端成本，影响零售商与汽车制造业的营业利润率。',
+                why_en: 'New tariff layers may raise border import costs, squeezing margins for retail importers and auto supply chains.',
+                impact_zh: '非必需消费 (XLY) 与跨国制造板块表现受限，资金偏好本土化程度更高的中小型工业企业。',
+                impact_en: 'Created drag on imported consumer goods while supporting domestically focused US industrial firms.'
+            },
+            {
+                id: 'n7',
+                category: 'EARNINGS',
+                tag: '估值重构 / 1999 泡沫对照',
+                date: '2026-10-21',
+                source: 'Morningstar Markets Research',
+                source_url: 'https://www.morningstar.com.au/markets/2026-is-not-1999',
+                title_zh: '晨星专题报告：2026 年美股集中度极高，但“估值由真实盈利支撑非空想”',
+                title_en: 'Morningstar: High Market Concentration in 2026 Backed by Real Profits, Not 1999 Hype',
+                happened_zh: '晨星发布针对美股集中度的深度报告显示：尽管标普500前十大市值股票占比处于历史高位，但 8 家巨头的市盈率 (P/E) 显著低于 5 年前水平，NVIDIA 动态 P/E 较巅峰时期已缩水一半。',
+                happened_en: 'Morningstar research highlights that 8 of the top 10 market leaders trade at lower earnings multiples than 5 years ago, backed by real EPS growth.',
+                why_zh: '与 1999 年互联网泡沫依赖市销率（P/S）和概念推高估值不同，当前 AI 产业链领头羊均由高净利润和真实自由现金流（FCF）支撑。',
+                why_en: 'Unlike 1999 dot-com speculative rerating, current AI leaders are priced on earnings and cash flow rather than multiple expansion.',
+                impact_zh: '消除了机构对美股存在系统性估值泡沫的恐慌，为回调期间的长线长线买盘（DCA）提供理论锚点。',
+                impact_en: 'Provides fundamental floor against panic selling, encouraging institutional dips buying during corrections.'
+            },
+            {
+                id: 'n8',
+                category: 'EARNINGS',
+                tag: '机构研报 / 固收配置',
+                date: '2026-10-25',
+                source: 'Goldman Sachs Asset Management',
+                source_url: 'https://am.gs.com/en-us/advisors/insights/article/market-pulse',
+                title_zh: '高盛资管上调标普500 2026 年每股收益 (EPS) 增速预期至 36%',
+                title_en: 'Goldman Sachs Asset Management Projects 36% S&P 500 EPS Growth for 2026',
+                happened_zh: '高盛资管公布最新资产配置策略，将标普500成分股 2026 年整体 EPS 增长预期上调至 36%，同时预测 2027-2028 年保持双位数增长。',
+                happened_en: 'GSAM raised 2026 S&P 500 EPS growth forecasts to 36%, expecting double-digit profit expansion continuing into 2027-2028.',
+                why_zh: '强劲的企业盈利将帮助消化高美债收益率（10Y ~4.95%）带来的折现率压迫，为标普 500 指数中长期走势提供底层支撑。',
+                why_en: 'Resilient corporate earnings offset the valuation headwinds from 4.95% long-term risk-free rates.',
+                impact_zh: '机构资金建议在固收端锁定 4.8%-5.0% 的高品质债券收益率，同时维持美股核心科技与优质金融的双核心配置。',
+                impact_en: 'Advised institutions to lock in high quality bond yields while maintaining overweight positions in prime equities.'
+            }
+        ];
+
+        let archiveHistory = JSON.parse(localStorage.getItem('user_briefing_archives')) || [
+            { id: 'arch-0', date: '2026-10-29', type: '08:00 MYT 早报', title: '大盘情绪回升至52，VIX恐慌指数大幅回落至16.4' },
+            { id: 'arch-1', date: '2026-10-28', type: '08:00 MYT 早报', title: 'Fed 按兵不动，高盛预估 2026 年 AI CapEx 破万亿' },
+            { id: 'arch-2', date: '2026-10-27', type: '08:00 MYT 早报', title: '超级财报周开启：谷歌/亚马逊锁定 $2200亿 AI 订单' }
+        ];
+
+        const i18n = {
+            ZH: {
+                app_title: '美股每日早报',
+                nav_archive: '报告归档',
+                arch_title: '历史研报归档 (Market Research Archive)',
+                sec1_title: '美股大盘全景',
+                sec1_subtitle: '资金从高估值科技股向周期小盘股轮动',
+                yield_10y: '10Y Yield',
+                yield_2y: '2Y Yield',
+                dxy: 'DXY (美元指数)',
+                wti: 'WTI 原油',
+                market_drivers_head: '大盘核心驱动逻辑 (Key Market Drivers)',
+                driver1_h: '1. 超级财报周：科技巨头订单坚挺',
+                driver1_p: '谷歌与亚马逊宣布锁定超 $2,200 亿 AI 计算合同，算力订单强劲对冲了部分高估值获利平仓的盘面压力。',
+                driver2_h: '2. 原油小幅回落缓解短线通胀压迫',
+                driver2_p: 'WTI 原油回落 2.6% 至 $98.80/桶 重新回到 $100 关口下方，暂时缓解了市场对“二次通胀”加剧的即时担忧。',
+                driver3_h: '3. 美联储按兵不动，收益率维持在 4.95%',
+                driver3_p: 'FOMC 以 10-2 投票结果维持 3.75%-4.00% 利率不变，市场正消化 12 月议息会议的政策路线。',
+                sec2_title: '美国11大行业板块表现 (Sector Performance)',
+                sec2_subtitle_desc: '使用 Select Sector SPDR ETF 作为行业代理。数据为上一交易日的价格涨跌幅。',
+                chart_title: '美国行业 ETF 单日表现',
+                sec3_title: '市场核心要闻 (Top Market Stories)',
+                cat_all: '全部 (8)',
+                sec6_title: '财经日历与重大事件 (Upcoming Economic Calendar)',
+                sec6_subtitle: '精选 2 星与 3 星高影响度核心指标 • 所有时间已自动转换为 MYT (UTC+8)',
+                sec7_title: '交易准备与盘前 Checklist',
+                sec7_subtitle: '勾选保存盘前准备状态',
+                prep_watch_h: '盘前三大关注重点',
+                prep_w1: '<strong>10年期美债收益率 4.90%-5.00% 整数关:</strong> 观察收益率能否企稳，决定小盘股 relative strength 与科技股反弹幅度。',
+                prep_w2: '<strong>WTI 原油 $100 关口争夺:</strong> 跟踪地缘局势，油价若继续突破将加剧市场对二次通胀与成本压力的担忧。',
+                prep_w3: '<strong>Big Tech 财报前夕买盘测试:</strong> 关注 NVDA、GOOGL 在关键技术均线 (如50日EMA) 是否获得机构逢低买盘。',
+                prep_risk_h: '市场最大潜在风险',
+                prep_risk_sub: '“二次通胀”与“AI 资本开支回报期过长”的双重挤压',
+                prep_risk_p: '若地缘冲突导致油价居高不下（Brent > $110），美联储将难以顺畅降息；同时若即将发布的云计算巨头财报中 CapEx 指引缩减，AI 硬件供应链将遭遇估值与业绩双杀。',
+                prep_chk_h: '盘前检查清单 (Interactive Checklist)',
+                footer_disclaimer: '免责声明：本终端内容仅供研究与信息参考，不构成任何投资建议。投资者据此操作，风险自担。'
+            },
+            EN: {
+                app_title: 'US Market Daily Briefing',
+                nav_archive: 'Archive',
+                arch_title: 'Market Research Archive',
+                sec1_title: 'US Market Overview',
+                sec1_subtitle: 'Capital rotation from tech valuation to small-cap cyclical stocks',
+                yield_10y: '10Y Yield',
+                yield_2y: '2Y Yield',
+                dxy: 'DXY Index',
+                wti: 'WTI Oil',
+                market_drivers_head: 'Key Market Drivers',
+                driver1_h: '1. Earnings Week: Cloud Backlog Strong',
+                driver1_p: 'Alphabet and Amazon secure $220B+ AI compute commitments, anchoring mega-cap tech fundamentals.',
+                driver2_h: '2. Crude Oil Pulls Back Below $100',
+                driver2_p: 'WTI crude dropped to $98.80, easing short-term inflation fears.',
+                driver3_h: '3. Fed Pause Keeps Yields near 4.95%',
+                driver3_p: 'Fed holds rates 3.75%-4.00% in 10-2 vote as markets await December decisions.',
+                sec2_title: 'US Sector Performance (11 Sectors)',
+                sec2_subtitle_desc: 'Sector performance based on SPDR ETFs.',
+                chart_title: 'Sector ETF Single-Day Performance',
+                sec3_title: 'Top Market Stories',
+                cat_all: 'ALL (8)',
+                sec6_title: 'Upcoming Economic Calendar',
+                sec6_subtitle: 'Filtered for 2-Star & 3-Star High-Impact Events (MYT / UTC+8)',
+                sec7_title: 'Pre-Market Preparation & Checklist',
+                sec7_subtitle: 'Save checklist state locally',
+                prep_watch_h: 'Top 3 Focus Areas',
+                prep_w1: '10Y Treasury Yield 4.90%-5.00% Level',
+                prep_w2: 'WTI Crude $100 Support/Resistance',
+                prep_w3: 'Big Tech Post-Earnings Volatility',
+                prep_risk_h: 'Key Market Risks',
+                prep_risk_sub: 'Inflation & CapEx Scrutiny',
+                prep_risk_p: 'Persistent energy costs combined with delayed AI revenue could pressure valuation multiples.',
+                prep_chk_h: 'Pre-Market Checklist',
+                footer_disclaimer: 'Disclaimer: For research and informational purposes only.'
+            }
+        };
+
+        // 4. Render News Cards
+        function renderNews() {
+            const container = document.getElementById('news-container');
+            if (!container) return;
+
+            const filtered = selectedNewsCategory === 'ALL'
+                ? newsData
+                : newsData.filter(item => item.category === selectedNewsCategory);
+
+            container.innerHTML = filtered.map(item => {
+                const title = currentLang === 'ZH' ? item.title_zh : item.title_en;
+                const happened = currentLang === 'ZH' ? item.happened_zh : item.happened_en;
+                const why = currentLang === 'ZH' ? item.why_zh : item.why_en;
+                const impact = currentLang === 'ZH' ? item.impact_zh : item.impact_en;
+
+                return `
+                    <div class="bg-[#151c2c] p-4 rounded-xl border border-[#232d42] space-y-3 hover:border-slate-600 transition flex flex-col justify-between">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between border-b border-[#232d42] pb-2">
+                                <span class="text-xs font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">${item.tag}</span>
+                                <span class="text-[10px] font-mono text-slate-400">${item.date}</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white leading-snug">${title}</h3>
+                            <div class="space-y-2 text-xs text-slate-300">
+                                <div>
+                                    <span class="text-slate-400 font-mono font-semibold block mb-0.5">【事件发生】:</span>
+                                    <p class="leading-relaxed text-slate-300">${happened}</p>
+                                </div>
+                                <div class="bg-[#0b0f19] p-2.5 rounded-lg border border-[#232d42]">
+                                    <span class="text-amber-400 font-mono font-semibold block mb-0.5">【为什么重要 / 核心逻辑】:</span>
+                                    <p class="leading-relaxed text-slate-400">${why}</p>
+                                </div>
+                                <div class="bg-[#0b0f19] p-2.5 rounded-lg border border-[#232d42]">
+                                    <span class="text-emerald-400 font-mono font-semibold block mb-0.5">【潜在市场影响】:</span>
+                                    <p class="leading-relaxed text-slate-400">${impact}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-[#232d42] flex items-center justify-between text-[11px] font-mono text-slate-400">
+                            <span>来源: ${item.source}</span>
+                            <a href="${item.source_url}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline flex items-center gap-1">
+                                查看原文链接 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterNews(cat) {
+            selectedNewsCategory = cat;
+            document.querySelectorAll('.news-filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-cat') === cat) {
+                    btn.className = "news-filter-btn px-2.5 py-1 rounded-lg bg-sky-500 text-slate-950 font-semibold transition";
+                } else {
+                    btn.className = "news-filter-btn px-2.5 py-1 rounded-lg bg-[#151c2c] text-slate-300 hover:text-white border border-[#232d42] transition";
+                }
+            });
+            renderNews();
+        }
+
+        function renderChecklist() {
+            const container = document.getElementById('checklist-container');
+            if (!container) return;
+
+            container.innerHTML = checklistData.map(item => {
+                const text = currentLang === 'ZH' ? item.text_zh : item.text_en;
+                const isChecked = item.checked;
+
+                return `
+                    <label onclick="toggleChecklistItem('${item.id}')" class="flex items-start gap-2.5 p-2 rounded-lg bg-[#0b0f19] border border-[#232d42] hover:border-slate-600 transition cursor-pointer">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} class="mt-0.5 accent-sky-500 rounded">
+                        <span class="${isChecked ? 'line-through text-slate-500' : 'text-slate-200'} leading-snug">${text}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleChecklistItem(id) {
+            const item = checklistData.find(i => i.id === id);
+            if (item) {
+                item.checked = !item.checked;
+                renderChecklist();
+            }
+        }
+
+        function openArchiveModal() {
+            const modal = document.getElementById('archive-modal');
+            if (!modal) return;
+            renderArchiveList();
+            modal.classList.remove('hidden');
+        }
+
+        function closeArchiveModal() {
+            const modal = document.getElementById('archive-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function renderArchiveList() {
+            const list = document.getElementById('archive-list-container');
+            if (!list) return;
+
+            list.innerHTML = archiveHistory.map((item, idx) => `
+                <div class="p-3 bg-[#0b0f19] rounded-xl border border-[#232d42] hover:border-sky-500/50 transition flex items-center justify-between">
+                    <div onclick="selectArchiveItem('${item.id}')" class="cursor-pointer flex-1">
+                        <div class="font-bold text-white flex items-center gap-2">
+                            <span>${item.title}</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">${item.date} • ${item.type}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="selectArchiveItem('${item.id}')" class="text-xs bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 px-2.5 py-1 rounded border border-sky-500/30">查看</button>
+                        ${idx > 2 ? `<button onclick="deleteArchiveItem('${item.id}')" class="text-xs bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 px-2.5 py-1 rounded border border-rose-500/30"><i class="fa-solid fa-trash"></i></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveTodayBriefingToArchive() {
+            const today = new Date().toISOString().split('T')[0];
+            const typeStr = reportMode === 'morning' ? '08:00 MYT 早报' : '19:00 MYT 晚报';
+            const newId = 'arch-custom-' + Date.now();
+
+            const newEntry = {
+                id: newId,
+                date: today,
+                type: typeStr,
+                title: `[手动保存] ${today} ${typeStr} 全景快照`
+            };
+
+            archiveHistory.unshift(newEntry);
+            localStorage.setItem('user_briefing_archives', JSON.stringify(archiveHistory));
+            renderArchiveList();
+            alert("✅ 今日研报快照已成功保存至本地归档！");
+        }
+
+        function deleteArchiveItem(id) {
+            archiveHistory = archiveHistory.filter(i => i.id !== id);
+            localStorage.setItem('user_briefing_archives', JSON.stringify(archiveHistory));
+            renderArchiveList();
+        }
+
+        function selectArchiveItem(id) {
+            closeArchiveModal();
+            const item = archiveHistory.find(i => i.id === id);
+            if (item) {
+                alert(`已为您加载调取历史研报: ${item.date} (${item.title})`);
+            }
+        }
+
+        function toggleReportMode() {
+            setReportMode(reportMode === 'morning' ? 'evening' : 'morning');
+        }
+
+        function setReportMode(mode) {
+            reportMode = mode;
+            const btnMorning = document.getElementById('btn-mode-morning');
+            const btnEvening = document.getElementById('btn-mode-evening');
+            const mobileLabel = document.getElementById('briefing-mode-mobile');
+
+            if (mode === 'morning') {
+                if (btnMorning) btnMorning.className = "px-2.5 py-1 rounded bg-sky-500 text-slate-950 font-bold transition flex items-center gap-1";
+                if (btnEvening) btnEvening.className = "px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1";
+                if (mobileLabel) mobileLabel.innerText = "08:00 MYT 最新";
+            } else {
+                if (btnEvening) btnEvening.className = "px-2.5 py-1 rounded bg-amber-500 text-slate-950 font-bold transition flex items-center gap-1";
+                if (btnMorning) btnMorning.className = "px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1";
+                if (mobileLabel) mobileLabel.innerText = "19:00 MYT 盘前";
+            }
+
+            const dateBadge = document.getElementById('sector-date-badge');
+            if (dateBadge) {
+                dateBadge.innerText = mode === 'morning' ? '2026年10月29日 08:00 MYT 盘后总结' : '2026年10月29日 19:00 MYT 盘前即时';
+            }
+        }
+
+        function updateClocks() {
+            const now = new Date();
+            let hours = now.getUTCHours();
+            
+            if (currentTimezone === 'MYT') {
+                hours = (hours + 8) % 24;
+            } else {
+                hours = (hours - 4 + 24) % 24;
+            }
+
+            const formattedTime = [
+                String(hours).padStart(2, '0'),
+                String(now.getUTCMinutes()).padStart(2, '0'),
+                String(now.getUTCSeconds()).padStart(2, '0')
+            ].join(':');
+
+            const clockDesktop = document.getElementById('clock-desktop');
+            if (clockDesktop) clockDesktop.innerText = formattedTime;
+        }
+
+        function toggleTimezone() {
+            currentTimezone = currentTimezone === 'MYT' ? 'EST' : 'MYT';
+            const badge = document.getElementById('tz-badge');
+            if (badge) badge.innerText = currentTimezone;
+            updateClocks();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ZH' ? 'EN' : 'ZH';
+
+            const langLabel = document.getElementById('lang-label');
+            const langLabelMobile = document.getElementById('lang-label-mobile');
+            if (langLabel) langLabel.innerText = currentLang === 'ZH' ? 'English' : '华语';
+            if (langLabelMobile) langLabelMobile.innerText = currentLang === 'ZH' ? 'English' : '华语';
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang] && i18n[currentLang][key]) {
+                    el.innerHTML = i18n[currentLang][key];
+                }
+            });
+
+            renderNews();
+            renderChecklist();
+        }
+
+        // 5. Page Initialization
+        window.onload = function() {
+            renderNews();
+            renderChecklist();
+            updateClocks();
+            setInterval(updateClocks, 1000);
+        };
+    </script>
+</body>
+</html>
