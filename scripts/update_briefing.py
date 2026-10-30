@@ -3,15 +3,12 @@ import json
 import re
 from datetime import datetime
 import yfinance as yf
-import google.generativeai as genai
+import requests
 
 # ====================== 配置 ======================
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY 未设置")
-
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-3.8-flash")
 
 # ====================== 1. 获取市场数据 ======================
 def fetch_market_snapshot():
@@ -43,9 +40,9 @@ def fetch_market_snapshot():
             print(f"Error {symbol}: {e}")
     return snapshot
 
-# ====================== 2. 调用 Gemini 生成完整早报 ======================
+# ====================== 2. 调用 Gemini REST API 生成完整早报 ======================
 def generate_full_briefing(snapshot):
-    print("Calling Gemini to generate full briefing...")
+    print("Calling Gemini REST API to generate full briefing...")
     
     data_lines = [f"{k}: {v['price']} ({'+' if v['pct']>=0 else ''}{v['pct']}%)" for k, v in snapshot.items()]
     data_text = "\n".join(data_lines)
@@ -57,14 +54,14 @@ def generate_full_briefing(snapshot):
 【最新市场数据】
 {data_text}
 
-请严格输出以下 JSON 格式（不要添加任何解释或 markdown 代码块）：
+请严格输出以下 JSON 格式（绝对不要包含 markdown 代码块如 ```json ，直接返回纯 JSON 字符串）：
 
 {{
   "headline": "一句话总结今日市场核心特征（25字以内）",
-  "sentiment_score": 0到100的整数,
-  "sentiment_label": "例如：温和 Neutral / 多空博弈",
+  "sentiment_score": 52,
+  "sentiment_label": "温和 Neutral / 多空博弈",
   "drivers": [
-    {{"title": "驱动因素标题（15字内）", "content": "详细解释40-70字"}},
+    {{"title": "驱动因素标题", "content": "详细解释40-70字"}},
     {{"title": "驱动因素标题", "content": "详细解释"}},
     {{"title": "驱动因素标题", "content": "详细解释"}}
   ],
@@ -83,8 +80,8 @@ def generate_full_briefing(snapshot):
   }},
   "stories": [
     {{
-      "category": "FED 或 AI 或 POLICY 或 EARNINGS",
-      "tag": "例如：Fed 利率决议 / 鹰派按兵不动",
+      "category": "FED",
+      "tag": "Fed 利率决议 / 鹰派按兵不动",
       "date": "{today}",
       "title": "新闻标题（25字内）",
       "what": "事件发生描述（40-60字）",
@@ -98,27 +95,50 @@ def generate_full_briefing(snapshot):
     "盘前关注重点2（40字左右）",
     "盘前关注重点3（40字左右）"
   ],
-  "max_risk_title": "市场最大潜在风险的标题（20字内）",
+  "max_risk_title": "市场最大潜在风险标题",
   "max_risk_content": "风险详细描述（60-90字）"
 }}
 
 要求：
-1. stories 生成 8～10 条，覆盖不同主题（Fed、AI、政策、财报、地缘等
+1. stories 生成 8～10 条，覆盖不同主题（FED、AI、POLICY、EARNINGS）
 2. focus_points 要具体、可操作
 3. 内容专业、客观
 """
 
-    try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-        briefing = json.loads(text)
-        print("Full briefing generated successfully.")
-        return briefing
-    except Exception as e:
-        print(f"Gemini failed: {e}")
-        return None
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+    headers = {"Content-Type": "application/json"}
+
+    # 依次尝试可用模型的 REST API Endpoint
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-1.5-flash"
+    ]
+
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+        try:
+            print(f"尝试请求 Endpoint: {model_name}...")
+            res = requests.post(url, json=payload, headers=headers, timeout=40)
+            if res.status_code == 200:
+                res_data = res.json()
+                text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                # 过滤可能的 markdown 标记
+                text = re.sub(r"^```(?:json)?\s*", "", text)
+                text = re.sub(r"\s*```$", "", text)
+                briefing = json.loads(text)
+                print(f"成功通过 {model_name} 生成 AI 研报！")
+                return briefing
+            else:
+                print(f"模型 {model_name} 返回错误状态码 {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"调用 {model_name} 发生异常: {e}")
+
+    print("所有 Gemini 接口调用均失败。")
+    return None
 
 # ====================== 3. 更新 index.html ======================
 def update_html(snapshot, briefing):
@@ -155,7 +175,7 @@ def update_html(snapshot, briefing):
                             <p class="text-slate-400">{d.get("content", "")}</p>
                         </div>'''
         content = re.sub(
-            r'(大盘核心驱动逻辑[\s\S]*?<div class="space-y-3">)[\s\S]*?(</div>\s*</div>\s*</div>\s*</section>)',
+            r'(大盘核心驱动逻辑[\s\S]*?<div class="grid md:grid-cols-3 gap-4">)[\s\S]*?(</div>\s*</div>\s*</div>)',
             r'\1' + drivers_html + r'\2',
             content, count=1
         )
@@ -191,10 +211,10 @@ def update_html(snapshot, briefing):
     if "focus_points" in briefing and len(briefing["focus_points"]) >= 3:
         focus_html = ""
         for point in briefing["focus_points"][:3]:
-            focus_html += f'<p class="text-sm text-slate-300 leading-relaxed mb-2">• {point}</p>'
+            focus_html += f'<p class="text-xs text-slate-300 leading-relaxed font-sans">• {point}</p>'
         
         content = re.sub(
-            r'(盘前三大关注重点[\s\S]*?<div class="space-y-2 text-sm text-slate-300">)[\s\S]*?(</div>)',
+            r'(盘前三大关注重点[\s\S]*?<div class="space-y-2 text-xs text-slate-300">)[\s\S]*?(</div>)',
             r'\1' + focus_html + r'\2',
             content, count=1
         )
@@ -202,30 +222,30 @@ def update_html(snapshot, briefing):
     # ===== 市场最大潜在风险 =====
     if "max_risk_title" in briefing and "max_risk_content" in briefing:
         risk_html = f'''
-                    <div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4">
-                        <div class="text-rose-300 font-bold text-sm mb-2">{briefing["max_risk_title"]}</div>
-                        <p class="text-slate-300 text-sm leading-relaxed">{briefing["max_risk_content"]}</p>
+                    <div class="text-xs text-slate-300 leading-relaxed bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">
+                        <span class="font-bold text-rose-300 block mb-1">{briefing["max_risk_title"]}</span>
+                        <p>{briefing["max_risk_content"]}</p>
                     </div>'''
         
         content = re.sub(
-            r'(市场最大潜在风险[\s\S]*?<div class="bg-rose-500/10[\s\S]*?</div>)',
-            '市场最大潜在风险' + risk_html,
+            r'(市场最大潜在风险[\s\S]*?<div class="text-xs text-slate-300[\s\S]*?</div>)',
+            '市场最大潜在风险</span>\n                        </h3>\n' + risk_html,
             content, count=1
         )
     
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(content)
     
-    print("index.html 已成功更新完整早报内容（含盘前关注点与风险提示）！")
+    print("index.html 已成功更新完整早报内容！")
 
 # ====================== 主程序 ======================
 if __name__ == "__main__":
     snapshot = fetch_market_snapshot()
-    print("Snapshot:", json.dumps(snapshot, indent=2, ensure_ascii=False))
+    print("Snapshot fetched:", json.dumps(snapshot, indent=2, ensure_ascii=False))
     
     briefing = generate_full_briefing(snapshot)
     
     if briefing:
-        print("Briefing generated, keys:", list(briefing.keys()))
+        print("Briefing generated keys:", list(briefing.keys()))
     
     update_html(snapshot, briefing)
